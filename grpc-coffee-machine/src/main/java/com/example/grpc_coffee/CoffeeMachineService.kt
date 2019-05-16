@@ -1,10 +1,31 @@
 package com.example.grpc_coffee
 
+import com.google.protobuf.Timestamp
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import io.grpc.stub.StreamObserver
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import kotlin.random.Random
 
 private class CoffeeMachineService : CoffeeMachineGrpc.CoffeeMachineImplBase() {
+
+    private val productHistory: MutableList<ProductHistoryItem> =
+        randomProductHistorySequence().take(100000).toMutableList()
+
+    private fun randomProductHistorySequence() = sequence {
+        val allProducts = Product.values().filterNot { it == Product.UNRECOGNIZED }
+        var createdAt = LocalDate.of(2018, 12, 1).atStartOfDay(ZoneId.of("Europe/Berlin"))
+        while (true) {
+            yield(ProductHistoryItem(allProducts.random(), createdAt))
+            createdAt += Duration.ofSeconds(Random.nextLong(10, 60))
+        }
+    }
 
     override fun ping(
         request: PingRequest,
@@ -34,7 +55,31 @@ private class CoffeeMachineService : CoffeeMachineGrpc.CoffeeMachineImplBase() {
         responseObserver.onCompleted()
     }
 
+    override fun getHistory(
+        request: GetHistoryRequest,
+        responseObserver: StreamObserver<GetHistoryResponse>
+    ) {
+        GlobalScope.launch {
+            val productHistoryCopy = productHistory.toList()
+            productHistoryCopy.chunked(50).forEach { chunkOfHistoryItems ->
+                chunkOfHistoryItems.forEach { historyItem ->
+                    val createdAt = historyItem.createdAt
+                    val reply = GetHistoryResponse.newBuilder()
+                        .setProduct(historyItem.product)
+                        .setCreatedAt(Timestamp.newBuilder().setSeconds(createdAt.toEpochSecond()).setNanos(createdAt.nano).build())
+                        .build()
+                    responseObserver.onNext(reply)
+                }
+                // artificial delay that simulates the history being read from somewhere (i.e. a database)
+                delay(10)
+            }
+            responseObserver.onCompleted()
+        }
+    }
+
 }
+
+private data class ProductHistoryItem(val product: Product, val createdAt: ZonedDateTime)
 
 fun main() {
     val port = 50051
