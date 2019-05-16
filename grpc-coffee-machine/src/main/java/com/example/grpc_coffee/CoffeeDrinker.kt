@@ -1,6 +1,7 @@
 package com.example.grpc_coffee
 
 import io.grpc.*
+import io.grpc.stub.ClientCalls
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
@@ -60,6 +61,40 @@ private class CoffeeDrinker(private val channel: ManagedChannel) {
     }
 
     fun printStatusUpdates(name: String, numUpdates: Int = 5) {
+        runBlocking {
+            println("Getting some status updates…")
+            val job = Job()
+
+            val call = channel.newCall(CoffeeMachineGrpc.getGetStatusUpdatesMethod(), CallOptions.DEFAULT)
+            val responseObserver = object : StreamObserver<GetStatusUpdatesResponse> {
+                private var counter = 0
+                override fun onNext(value: GetStatusUpdatesResponse) {
+                    println("Got status update: ${value.message}")
+                    counter++
+                    if (counter >= numUpdates) {
+                        call.cancel("", null)
+                    }
+                }
+
+                override fun onError(t: Throwable) {
+                    println("onError $t")
+                    job.cancel()
+                }
+
+                override fun onCompleted() {
+                    println("onCompleted")
+                    job.cancel()
+                }
+
+            }
+            val requestObserver = ClientCalls.asyncBidiStreamingCall(call, responseObserver)
+            requestObserver.onNext(GetStatusUpdatesRequest.newBuilder().setName(name).build())
+            requestObserver.onCompleted()
+            job.join()
+        }
+    }
+
+    fun printStatusUpdatesWithManualFlowControl(name: String, numUpdates: Int = 5) {
         runBlocking {
             println("Getting some status updates…")
             val job = Job()
