@@ -21,6 +21,7 @@ dependencies {
     implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.1.1"
     compileOnly "javax.annotation:javax.annotation-api:1.2"
 
     testImplementation "io.grpc:grpc-testing:${grpcVersion}" // gRCP testing utilities
