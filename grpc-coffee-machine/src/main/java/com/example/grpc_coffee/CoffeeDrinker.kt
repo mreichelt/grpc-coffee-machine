@@ -1,7 +1,6 @@
 package com.example.grpc_coffee
 
-import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
+import io.grpc.*
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
@@ -9,7 +8,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit.SECONDS
 
-private class CoffeeDrinker(channel: ManagedChannel) {
+private class CoffeeDrinker(private val channel: ManagedChannel) {
 
     private val blockingStub = CoffeeMachineGrpc.newBlockingStub(channel)
     private val nonBlockingStub = CoffeeMachineGrpc.newStub(channel)
@@ -60,6 +59,53 @@ private class CoffeeDrinker(channel: ManagedChannel) {
         }
     }
 
+    fun printStatusUpdates(name: String, numUpdates: Int = 5) {
+        runBlocking {
+            println("Getting some status updates…")
+            val job = Job()
+
+            val call = channel.newCall(CoffeeMachineGrpc.getGetStatusUpdatesMethod(), CallOptions.DEFAULT)
+
+            val listener = object : ClientCall.Listener<GetStatusUpdatesResponse>() {
+
+                private var counter = 0
+
+                override fun onReady() {
+                    println("onReady")
+                }
+
+                override fun onMessage(message: GetStatusUpdatesResponse) {
+                    println("Got status update: ${message.message}")
+                    counter++
+                    if (counter >= numUpdates) {
+                        closeEverything()
+                    } else {
+                        call.request(1)
+                    }
+                }
+
+                override fun onHeaders(headers: Metadata) {
+                    println("onReady")
+                }
+
+                override fun onClose(status: Status, trailers: Metadata) {
+                    println("onClose, status = $status")
+                }
+
+                private fun closeEverything() {
+                    call.cancel("", null)
+                    job.cancel()
+                }
+            }
+
+            call.start(listener, Metadata())
+            call.sendMessage(GetStatusUpdatesRequest.newBuilder().setName(name).build())
+            call.halfClose()
+            call.request(1)
+            job.join()
+        }
+    }
+
 }
 
 fun main() {
@@ -74,6 +120,8 @@ fun main() {
     coffeeDrinker.giveMeMy(Product.CAPPUCCINO)
     println()
     coffeeDrinker.printOnlyCappuccinosFromHistory()
+    println()
+    coffeeDrinker.printStatusUpdates("Max Mustermann")
 
     channelToCoffeeMachine.shutdown().awaitTermination(10, SECONDS)
 }

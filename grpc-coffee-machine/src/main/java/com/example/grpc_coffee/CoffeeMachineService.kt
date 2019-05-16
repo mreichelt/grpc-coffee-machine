@@ -3,6 +3,7 @@ package com.example.grpc_coffee
 import com.google.protobuf.Timestamp
 import io.grpc.Server
 import io.grpc.ServerBuilder
+import io.grpc.stub.ServerCallStreamObserver
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -59,6 +60,7 @@ private class CoffeeMachineService : CoffeeMachineGrpc.CoffeeMachineImplBase() {
         request: GetHistoryRequest,
         responseObserver: StreamObserver<GetHistoryResponse>
     ) {
+        println("Sending my product history…")
         GlobalScope.launch {
             val productHistoryCopy = productHistory.toList()
             productHistoryCopy.chunked(50).forEach { chunkOfHistoryItems ->
@@ -74,6 +76,31 @@ private class CoffeeMachineService : CoffeeMachineGrpc.CoffeeMachineImplBase() {
                 delay(10)
             }
             responseObserver.onCompleted()
+        }
+    }
+
+    override fun getStatusUpdates(
+        request: GetStatusUpdatesRequest,
+        responseObserver: StreamObserver<GetStatusUpdatesResponse>
+    ) {
+        println("Sending status updates for ${request.name} until end of call…")
+        GlobalScope.launch {
+            var counter = 0
+            while (true) {
+                responseObserver as ServerCallStreamObserver<GetStatusUpdatesResponse>
+                counter++
+                delay(1000)
+                if (responseObserver.isCancelled) {
+                    println("status update cancelled by client")
+                    return@launch
+                }
+                val response = GetStatusUpdatesResponse
+                    .newBuilder()
+                    .setMessage("status update $counter for ${request.name}")
+                    .build()
+                println(response.message)
+                responseObserver.onNext(response)
+            }
         }
     }
 

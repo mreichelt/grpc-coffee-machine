@@ -12,6 +12,7 @@ service CoffeeMachine {
     rpc Ping (PingRequest) returns (PingResponse) {}
     rpc GetProduct (ProduceProductRequest) returns (ProduceProductResponse) {}
     rpc GetHistory (GetHistoryRequest) returns (stream GetHistoryResponse) {}
+    rpc GetStatusUpdates (GetStatusUpdatesRequest) returns (stream GetStatusUpdatesResponse) {}
 }
 
 message PingRequest {
@@ -44,4 +45,12 @@ message GetHistoryRequest {
 message GetHistoryResponse {
     Product product = 1;
     google.protobuf.Timestamp created_at = 2;
+}
+
+message GetStatusUpdatesRequest {
+    string name = 1;
+}
+
+message GetStatusUpdatesResponse {
+    string message = 1;
 }
