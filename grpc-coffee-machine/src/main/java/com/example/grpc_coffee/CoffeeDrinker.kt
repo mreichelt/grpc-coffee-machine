@@ -11,7 +11,14 @@ private class CoffeeDrinker(channel: ManagedChannel) {
     fun ping() {
         println("Pinging coffee machine now…")
         val pingResponse = coffeeMachineStub.ping(PingRequest.getDefaultInstance())
-        println("Coffee machine is alive=${pingResponse.alive} and replies with: '${pingResponse.message}'")
+        println("Coffee machine is alive=${pingResponse.alive} and replied with: '${pingResponse.message}'")
+    }
+
+    fun giveMeMy(product: Product) {
+        println("Asking coffee machine to make me ${product.name.toLowerCase()}…")
+        val request = ProduceProductRequest.newBuilder().setProduct(product).build()
+        val response = coffeeMachineStub.getProduct(request)
+        println("Coffee machine made me ${response.product.name.toLowerCase()} :-)")
     }
 
 }
@@ -23,6 +30,8 @@ fun main() {
 
     val coffeeDrinker = CoffeeDrinker(channelToCoffeeMachine)
     coffeeDrinker.ping()
+    println()
+    coffeeDrinker.giveMeMy(Product.CAPPUCCINO)
 
     channelToCoffeeMachine.shutdown().awaitTermination(1, SECONDS)
 }

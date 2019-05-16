@@ -6,10 +6,29 @@ import io.grpc.stub.StreamObserver
 
 private class CoffeeMachineService : CoffeeMachineGrpc.CoffeeMachineImplBase() {
 
-    override fun ping(request: PingRequest, responseObserver: StreamObserver<PingResponse>) {
+    override fun ping(
+        request: PingRequest,
+        responseObserver: StreamObserver<PingResponse>
+    ) {
+        println("I'm alive")
+
         val reply = PingResponse.newBuilder()
             .setAlive(true)
             .setMessage("I'm alive - how about some coffee?")
+            .build()
+        responseObserver.onNext(reply)
+        responseObserver.onCompleted()
+    }
+
+    override fun getProduct(
+        request: ProduceProductRequest,
+        responseObserver: StreamObserver<ProduceProductResponse>
+    ) {
+        val product = request.product
+        println("Creating product ${product.name.toLowerCase()}")
+
+        val reply = ProduceProductResponse.newBuilder()
+            .setProduct(product)
             .build()
         responseObserver.onNext(reply)
         responseObserver.onCompleted()
