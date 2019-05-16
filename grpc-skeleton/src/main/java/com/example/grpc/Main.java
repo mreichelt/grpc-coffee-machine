@@ -1,12 +1,15 @@
 package com.example.grpc;
 
+import com.example.grpc_coffee.CoffeeMachineGrpc;
+import com.example.grpc_coffee.PingRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        // TODO: call coffee machine via grpc
         System.out.println("I want coffee!");
 
         String host = "localhost";
@@ -14,6 +17,12 @@ public class Main {
         ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
                 .build();
+
+        CoffeeMachineGrpc.CoffeeMachineBlockingStub stub = CoffeeMachineGrpc.newBlockingStub(channel);
+        String message = stub.ping(PingRequest.getDefaultInstance()).getMessage();
+        System.out.println("server responds with: " + message);
+
+        channel.shutdown().awaitTermination(10, SECONDS);
 
         // tip: run `./gradlew generateProto` to generate Java classes from .proto
 
